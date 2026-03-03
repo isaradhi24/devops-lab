@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
 
   NODES = {
-    "k8s-master"  => { ip: "192.168.56.10", ram: 4096, cpus: 2, disk: 30, role: "k8s-master" },
+    "k8s-master"  => { ip: "192.168.56.10", ram: 6144, cpus: 3, disk: 30, role: "k8s-master" },
     "k8s-worker1" => { ip: "192.168.56.11", ram: 2048, cpus: 2, disk: 20, role: "k8s-worker" },
     "k8s-worker2" => { ip: "192.168.56.12", ram: 2048, cpus: 2, disk: 20, role: "k8s-worker" },
     "jenkins-ci"  => { ip: "192.168.56.20", ram: 4096, cpus: 4, disk: 40, role: "jenkins" },
@@ -28,7 +28,7 @@ Vagrant.configure("2") do |config|
         vb.customize ["modifyvm", :id, "--nicpromisc1", "allow-all"]
 
         # Resize disk (only works before first boot)
-        vb.customize ["modifyvm", :id, "--disk", "size=#{cfg[:disk] * 1024}"]
+        # vb.customize ["modifyvm", :id, "--disk", "size=#{cfg[:disk] * 1024}"]
       end
 
       node.vm.provision "shell", path: "scripts/base.sh"
