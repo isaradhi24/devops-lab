@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"   # 22.04; fine for lab
 
   NODES = {
-    "k8s-master"  => { ip: "192.168.56.10", ram: 3072, role: "k8s-master" },
+    "k8s-master"  => { ip: "192.168.56.10", ram: 4096, role: "k8s-master" },
     "k8s-worker1" => { ip: "192.168.56.11", ram: 2048, role: "k8s-worker" },
     "k8s-worker2" => { ip: "192.168.56.12", ram: 2048, role: "k8s-worker" },
     "jenkins-ci"  => { ip: "192.168.56.20", ram: 4096, role: "jenkins" },
@@ -17,6 +17,7 @@ Vagrant.configure("2") do |config|
       node.vm.provider "virtualbox" do |vb|
         vb.memory = cfg[:ram]
         vb.cpus   = 2
+        vb.customize ["modifyvm", :id, "--audio", "none"]
       end
 
       node.vm.provision "shell", path: "scripts/base.sh"
