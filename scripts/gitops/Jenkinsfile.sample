@@ -1,0 +1,61 @@
+pipeline {
+  agent any
+
+  environment {
+    DOCKER_IMAGE = "isaradhi/demo-app"
+    GITOPS_REPO  = "git@github.com:youruser/demo-gitops-repo.git"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git credentialsId: 'github-creds',
+            url: 'https://github.com/isaradhi24/demo-app.git',
+            branch: 'main'
+      }
+    }
+
+    stage('Build & Test') {
+      steps {
+        sh 'mvn clean verify'
+      }
+    }
+
+    stage('SonarQube Analysis') {
+      steps {
+        withSonarQubeEnv('sonarqube') {
+          sh 'mvn sonar:sonar'
+        }
+      }
+    }
+
+    stage('Docker Build & Push') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                                          usernameVariable: 'DOCKER_USER',
+                                          passwordVariable: 'DOCKER_PASS')]) {
+          sh """
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            docker build -t $DOCKER_IMAGE:${env.BUILD_NUMBER} .
+            docker push $DOCKER_IMAGE:${env.BUILD_NUMBER}
+          """
+        }
+      }
+    }
+
+    stage('Update GitOps Repo') {
+      steps {
+        sshagent(credentials: ['github-creds']) {
+          sh """
+            rm -rf gitops-repo
+            git clone $GITOPS_REPO gitops-repo
+            cd gitops-repo
+            sed -i 's#image: .*#image: $DOCKER_IMAGE:${env.BUILD_NUMBER}#' k8s/demo-app/deployment.yaml
+            git commit -am "Update image to $DOCKER_IMAGE:${env.BUILD_NUMBER}" || echo "No changes"
+            git push origin main
+          """
+        }
+      }
+    }
+  }
+}
