@@ -35,7 +35,7 @@ Vagrant.configure("2") do |config|
 
       case cfg[:role]
       when "k8s-master"
-        node.vm.provision "shell", path: "scripts/k8s-master.sh"
+        node.vm.provision "shell", path: "scripts/k8s-master-reset.sh", run: "always"
         node.vm.provision "shell", path: "scripts/k8s-cni-argocd.sh", run: "always"
       when "k8s-worker"
         node.vm.provision "shell", path: "scripts/k8s-worker.sh"
