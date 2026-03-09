@@ -15,7 +15,13 @@ Vagrant.configure("2") do |config|
   NODES.each do |name, cfg|
     config.vm.define name do |node|
       node.vm.hostname = name
+#      node.vm.network "private_network", ip: cfg[:ip]
+      node.vm.network "forwarded_port", guest: 80, host: 8080  # optional
       node.vm.network "private_network", ip: cfg[:ip]
+    # Add NAT interface
+      node.vm.provider "virtualbox" do |vb|
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      end
 
       node.vm.provider "virtualbox" do |vb|
         vb.memory = cfg[:ram]

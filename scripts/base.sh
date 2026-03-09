@@ -2,11 +2,11 @@
 set -e
 
 # ------------------------------
-# Base system update and packages
+# Update and install base packages
 # ------------------------------
 sudo apt-get update -y
 sudo apt-get upgrade -y
-sudo apt-get install -y git curl vim net-tools ca-certificates gnupg lsb-release apt-transport-https software-properties-common
+sudo apt-get install -y git curl vim net-tools ca-certificates gnupg lsb-release software-properties-common wget
 
 # ------------------------------
 # Disable swap (required for Kubernetes)
@@ -15,47 +15,45 @@ sudo swapoff -a
 sudo sed -i '/ swap / s/^/#/' /etc/fstab
 
 # ------------------------------
-# Enable IP forwarding (required for Kubernetes networking)
+# Enable IP forwarding
 # ------------------------------
 echo "net.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/99-kubernetes-ipforward.conf
 sudo sysctl --system
 
 # ------------------------------
-# Install containerd (CRI runtime)
+# Install containerd
 # ------------------------------
 sudo apt-get install -y containerd
-
-# Generate default containerd config
 sudo mkdir -p /etc/containerd
 sudo containerd config default | sudo tee /etc/containerd/config.toml
-
-# Restart and enable containerd
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 
 # ------------------------------
-# Configure Kubernetes apt repository (Ubuntu 22.04 / Jammy)
+# Install Kubernetes binaries directly (stable version)
 # ------------------------------
-sudo mkdir -p /usr/share/keyrings
-curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
+K8S_VERSION="v1.28.10"  # Stable version, change if needed
 
-# Use correct repo for Ubuntu 22.04
-echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-apt main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+mkdir -p /tmp/k8s && cd /tmp/k8s
 
-# Update and install Kubernetes components
-sudo apt-get update -y
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+curl -LO https://dl.k8s.io/release/${K8S_VERSION}/bin/linux/amd64/kubeadm
+curl -LO https://dl.k8s.io/release/${K8S_VERSION}/bin/linux/amd64/kubectl
+curl -LO https://dl.k8s.io/release/${K8S_VERSION}/bin/linux/amd64/kubelet
 
+chmod +x kubeadm kubectl kubelet
+sudo mv kubeadm kubectl kubelet /usr/local/bin/
+
+# ------------------------------
 # Enable kubelet service
+# ------------------------------
 sudo systemctl enable kubelet
 sudo systemctl start kubelet
 
 # ------------------------------
-# Verify versions (ignore errors if binary is not fully ready yet)
+# Verify Kubernetes binaries
 # ------------------------------
-kubectl version --client --short || true
 kubeadm version || true
+kubectl version --client --short || true
 kubelet --version || true
 
 # ------------------------------
