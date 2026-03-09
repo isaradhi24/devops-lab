@@ -1,0 +1,115 @@
+Vagrant Lab Operations Cheat-Sheet
+# 1. Check VM Status
+vagrant status
+
+Lists all VMs and whether they are running, saved, or powered off.
+
+# 2. Start / Bring Up VMs
+    # Start all VMs (master, workers, Jenkins, Sonar)
+    `vagrant up`
+
+# Start a specific VM
+    vagrant up k8s-master
+    vagrant up k8s-worker1
+    vagrant up k8s-worker2
+    vagrant up jenkins-ci
+    vagrant up sonarqube
+
+# Use --provision to run updated provisioners:
+    vagrant up --provision
+
+# 3. Reload / Reprovision VMs
+
+# 4.  Reload VM (reboot + run provisioners)
+    vagrant reload --provision k8s-master
+
+# 5. Reload all VMs
+    vagrant reload --provision
+
+Use this after updating Vagrantfile or scripts.
+
+# 6. SSH Into a VM
+    vagrant ssh k8s-master
+    vagrant ssh k8s-worker1
+    vagrant ssh k8s-worker2
+    vagrant ssh jenkins-ci
+    vagrant ssh sonarqube
+
+After SSH, run commands like kubectl get nodes or check services.
+
+# 7. Stop / Suspend VMs
+    # Graceful shutdown of all VMs
+    vagrant halt
+
+    # Stop a specific VM
+    vagrant halt k8s-master
+
+# 8. Suspend (save state) instead of halting
+    vagrant suspend
+
+# 9. Destroy / Delete VMs
+    # Destroy all VMs (clean slate)
+    vagrant destroy -f
+
+    # Destroy a specific VM
+    vagrant destroy -f k8s-worker2
+
+Warning: deletes VM disks and data.
+
+7️⃣ Provision / Apply Changes
+# Re-run provisioners for all VMs
+vagrant provision
+
+# Re-run provisioners for a specific VM
+vagrant provision k8s-master
+
+Useful after editing scripts/base.sh, Vagrantfile or inline provisioners (like kubeconfig fix).
+
+8️⃣ Kubernetes Checks (inside k8s-master)
+# Verify nodes
+kubectl get nodes
+
+# Verify all pods in all namespaces
+kubectl get pods -A
+
+# Deploy test nginx pod
+kubectl run test-nginx --image=nginx --restart=Never --port=80
+kubectl get pods -o wide
+
+# Expose pod via NodePort
+kubectl expose pod test-nginx --type=NodePort --port=80
+kubectl get svc
+9️⃣ Jenkins / SonarQube Access
+Service	URL	Default Port
+Jenkins	http://192.168.56.20:8080
+	8080
+SonarQube	http://192.168.56.30:9000
+	9000
+
+Jenkins admin password:
+
+vagrant ssh jenkins-ci
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+10️⃣ Permanent kubeconfig Fix (vagrant user)
+
+Already applied via inline provisioner in Vagrantfile:
+
+mkdir -p /home/vagrant/.kube
+cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+chown vagrant:vagrant /home/vagrant/.kube/config
+
+Runs automatically every boot (run: "always").
+
+No need to redo manually.
+
+11️⃣ Lab Quick Commands Summary
+Action	Command
+Start all VMs	vagrant up
+Stop all VMs	vagrant halt
+Reload + provision master	vagrant reload --provision k8s-master
+Destroy all VMs	vagrant destroy -f
+SSH into a VM	vagrant ssh <vm-name>
+Check status	vagrant status
+Run provisioners	vagrant provision or vagrant provision <vm>
+
+This cheat-sheet ensures you can start, stop, destroy, reprovision, and check everything in your lab quickly — plus kubectl, Jenkins, and SonarQube tips.

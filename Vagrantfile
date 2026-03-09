@@ -1,6 +1,9 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
 
+  # Shared folder between host and all VMs
+  config.vm.synced_folder ".", "/vagrant", type: "virtualbox", mount_options: ["dmode=775,fmode=664"]
+
   NODES = {
     "k8s-master"  => { ip: "192.168.56.10", ram: 6144, cpus: 3, disk: 30, role: "k8s-master" },
     "k8s-worker1" => { ip: "192.168.56.11", ram: 2048, cpus: 2, disk: 20, role: "k8s-worker" },
@@ -17,28 +20,50 @@ Vagrant.configure("2") do |config|
       node.vm.provider "virtualbox" do |vb|
         vb.memory = cfg[:ram]
         vb.cpus   = cfg[:cpus]
-
-        # Disable audio
         vb.customize ["modifyvm", :id, "--audio", "none"]
-
-        # Use virtio network adapter for speed
         vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
-
-        # Enable promiscuous mode (helps CNI)
         vb.customize ["modifyvm", :id, "--nicpromisc1", "allow-all"]
-
-        # Resize disk (only works before first boot)
-        # vb.customize ["modifyvm", :id, "--disk", "size=#{cfg[:disk] * 1024}"]
       end
 
+      node.vm.boot_timeout = 600
+
+      # --------------------------
+      # Base system provisioning
+      # --------------------------
       node.vm.provision "shell", path: "scripts/base.sh"
 
+      # --------------------------
+      # Kubeconfig setup (idempotent)
+      # --------------------------
+      node.vm.provision "shell", inline: <<-SHELL, run: "always"
+        if [ -f /etc/kubernetes/admin.conf ]; then
+          mkdir -p /home/vagrant/.kube
+          cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+          chown vagrant:vagrant /home/vagrant/.kube/config
+        else
+          echo "kubeconfig not yet available, skipping..."
+        fi
+      SHELL
+
+      # --------------------------
+      # Role-based provisioning
+      # --------------------------
       case cfg[:role]
       when "k8s-master"
+        # Reset master if previously exists and initialize
         node.vm.provision "shell", path: "scripts/k8s-master-reset.sh", run: "always"
+        # Deploy CNI + optional ArgoCD
         node.vm.provision "shell", path: "scripts/k8s-cni-argocd.sh", run: "always"
       when "k8s-worker"
-        node.vm.provision "shell", path: "scripts/k8s-worker.sh"
+        # Wait for master join script to exist before joining
+        node.vm.provision "shell", inline: <<-SHELL
+          echo "Waiting for Kubernetes master join script..."
+          while [ ! -f /vagrant/scripts/kubeadm_join.sh ]; do
+            sleep 5
+          done
+          chmod +x /vagrant/scripts/kubeadm_join.sh
+          sudo /vagrant/scripts/kubeadm_join.sh || true
+        SHELL
       when "jenkins"
         node.vm.provision "shell", path: "scripts/jenkins.sh"
       when "sonar"

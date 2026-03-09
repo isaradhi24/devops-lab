@@ -46,7 +46,7 @@ devops-lab/
    Your cluster is considered “fully ready” only when all of these pass.
 
    if /helthz failes
-      run `kubectl get pods -n kube-system -o wide` and check for 
+      run `sudo kubectl get pods -n kube-system -o wide` and check for 
          kube-apiser-* is Running
          etcd-* is Running
          No CrashLoopBackOff in status column
@@ -97,51 +97,40 @@ devops-lab/
       Only then is the cluster ready for the full validation script.
 
 
+vagrant@k8s-master:~$ ip addr show | grep "inet " | grep -v 127.0.0.1~
+    inet 127.0.0.1/8 scope host lo
+    inet 10.0.2.15/24 metric 100 brd 10.0.2.255 scope global dynamic enp0s3
+    inet 192.168.56.10/24 brd 192.168.56.255 scope global enp0s8
+    inet 10.244.0.0/32 scope global flannel.1
 
+vagrant@k8s-master:~$ kubeadm token list
+kubectl -n kube-system get configmap kubeadm-config -o yaml | grep "cluster-info"
+failed to list bootstrap tokens: Get "https://10.0.2.15:6443/api/v1/namespaces/kube-system/secrets?fieldSelector=type%3Dbootstrap.kubernetes.io%2Ftoken": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "kubernetes")
+To see the stack trace of this error execute with --v=5 or higher
+Unable to connect to the server: tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "kubernetes")
 
-
-
-
-
-
-
-
-
-
-
-
-
-# 10. How to use it end‑to‑end
+# 10. How to use the inrastructure end‑to‑end
 
 How This Works Now
-When you run:
-vagrant up
 
-Flow becomes:
+Requirements:
+   Install VirtualBox, Vagrant, Git on your host.
+   Clone your repo:
+   bash
+   git clone https://github.com/isaradhi24/devops-lab.git
+   cd devops-lab
+   Bring up the lab:
+   bash
+   When you run:
+   vagrant up k8s-master k8s-worker1 k8s-worker2 jenkins-ci sonarqube
+   Flow becomes:
+   Master initializes cluster
+   Master writes join command into shared folder
+   Workers wait for that file
+   Workers auto-join
+   Swap configured
+   Done
 
-Master initializes cluster
-
-Master writes join command into shared folder
-
-Workers wait for that file
-
-Workers auto-join
-
-Swap configured
-
-Done
-
-Install VirtualBox, Vagrant, Git on your host.
-
-Clone your repo:
-
-bash
-git clone https://github.com/isaradhi24/devops-lab.git
-cd devops-lab
-Bring up the lab:
-
-bash
-vagrant up
 After it finishes:
 
 Jenkins: http://192.168.56.20:8080
