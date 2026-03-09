@@ -1,42 +1,52 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
-sudo apt-get update -y
+echo "Installing dependencies..."
+sudo apt-get update
+sudo apt-get install -y curl gnupg fontconfig openjdk-17-jre apt-transport-https ca-certificates
 
-# Install dependencies
-sudo apt-get install -y openjdk-17-jdk curl gnupg2 ca-certificates
+# ------------------------------
+echo "Adding Jenkins GPG key..."
+# ------------------------------
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key \
+ | sudo gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
 
-# Jenkins repo key
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | \
-sudo tee /usr/share/keyrings/jenkins-keyring.asc >/dev/null
+# ------------------------------
+echo "Adding Jenkins repository..."
+# ------------------------------
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" \
+ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
 
-# Jenkins repo
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | \
-sudo tee /etc/apt/sources.list.d/jenkins.list
+# ------------------------------
+echo "Updating package list with key verification..."
+# ------------------------------
+sudo apt-get update --allow-releaseinfo-change
 
-sudo apt-get update -y
+# Retry loop for stubborn NO_PUBKEY errors
+for i in {1..3}; do
+    if sudo apt-get update; then
+        break
+    else
+        echo "Retrying apt-get update ($i)..."
+        sleep 5
+    fi
+done
+
+# ------------------------------
+echo "Installing Jenkins..."
+# ------------------------------
 sudo apt-get install -y jenkins
 
+# ------------------------------
+echo "Enabling and starting Jenkins..."
+# ------------------------------
 sudo systemctl enable jenkins
 sudo systemctl start jenkins
 
-# Maven
-sudo apt-get install -y maven
-
-# Docker
-sudo apt-get install -y docker.io
-sudo systemctl enable docker
-sudo systemctl start docker
-
-# Permissions
-sudo usermod -aG docker jenkins
-sudo usermod -aG docker vagrant
-
-sudo systemctl restart jenkins
-
 echo "================================="
-echo "Jenkins URL:"
-echo "http://192.168.56.20:8080"
+echo "Jenkins installation completed."
+echo "Jenkins installed successfully"
+echo "Jenkins URL: http://192.168.56.20:8080"
 echo "================================="
 
 echo "Initial admin password:"

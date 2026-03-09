@@ -44,6 +44,39 @@ chmod +x kubeadm kubectl kubelet
 sudo mv kubeadm kubectl kubelet /usr/local/bin/
 
 # ------------------------------
+# Create systemd service for kubelet (manual install)
+# ------------------------------
+sudo tee /etc/systemd/system/kubelet.service > /dev/null <<EOF
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/kubelet
+Restart=always
+RestartSec=5
+StartLimitInterval=0
+# Allow kubelet to create and manage required directories
+ExecStartPre=/bin/mkdir -p /var/lib/kubelet
+ExecStartPre=/bin/mkdir -p /var/lib/kubelet/plugins
+ExecStartPre=/bin/mkdir -p /var/lib/kubelet/pods
+Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
+# Important for kubelet to work
+Slice=kubelet.slice
+CPUAccounting=true
+MemoryAccounting=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd, enable and start kubelet
+sudo systemctl daemon-reload
+sudo systemctl enable kubelet
+sudo systemctl start kubelet
+
+# ------------------------------
 # Enable kubelet service
 # ------------------------------
 sudo systemctl enable kubelet

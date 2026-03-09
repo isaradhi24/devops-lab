@@ -15,66 +15,65 @@ Vagrant.configure("2") do |config|
   NODES.each do |name, cfg|
     config.vm.define name do |node|
       node.vm.hostname = name
-#      node.vm.network "private_network", ip: cfg[:ip]
-      node.vm.network "forwarded_port", guest: 80, host: 8080  # optional
+
+      # --------------------------
+      # Networking
+      # --------------------------
       node.vm.network "private_network", ip: cfg[:ip]
-    # Add NAT interface
-      node.vm.provider "virtualbox" do |vb|
-        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+
+      # Only Jenkins gets host port forwarding
+      if cfg[:role] == "jenkins"
+        node.vm.network "forwarded_port", guest: 8080, host: 8080
       end
 
+      # --------------------------
+      # VirtualBox settings
+      # --------------------------
       node.vm.provider "virtualbox" do |vb|
         vb.memory = cfg[:ram]
         vb.cpus   = cfg[:cpus]
         vb.customize ["modifyvm", :id, "--audio", "none"]
         vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
         vb.customize ["modifyvm", :id, "--nicpromisc1", "allow-all"]
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
       end
 
       node.vm.boot_timeout = 600
 
       # --------------------------
-      # Base system provisioning
+      # Base system provisioning (ALL nodes)
       # --------------------------
       node.vm.provision "shell", path: "scripts/base.sh"
-
-      # --------------------------
-      # Kubeconfig setup (idempotent)
-      # --------------------------
-      node.vm.provision "shell", inline: <<-SHELL, run: "always"
-        if [ -f /etc/kubernetes/admin.conf ]; then
-          mkdir -p /home/vagrant/.kube
-          cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
-          chown vagrant:vagrant /home/vagrant/.kube/config
-        else
-          echo "kubeconfig not yet available, skipping..."
-        fi
-      SHELL
 
       # --------------------------
       # Role-based provisioning
       # --------------------------
       case cfg[:role]
       when "k8s-master"
-        # Reset master if previously exists and initialize
         node.vm.provision "shell", path: "scripts/k8s-master-reset.sh", run: "always"
-        # Deploy CNI + optional ArgoCD
         node.vm.provision "shell", path: "scripts/k8s-cni-argocd.sh", run: "always"
+
       when "k8s-worker"
-        # Wait for master join script to exist before joining
-        node.vm.provision "shell", inline: <<-SHELL
-          echo "Waiting for Kubernetes master join script..."
-          while [ ! -f /vagrant/scripts/kubeadm_join.sh ]; do
-            sleep 5
-          done
-          chmod +x /vagrant/scripts/kubeadm_join.sh
-          sudo /vagrant/scripts/kubeadm_join.sh || true
-        SHELL
+        node.vm.provision "shell", path: "scripts/k8s-worker.sh"
+
       when "jenkins"
+        # Use the fixed script with permanent Jenkins GPG key
         node.vm.provision "shell", path: "scripts/jenkins.sh"
+
       when "sonar"
         node.vm.provision "shell", path: "scripts/sonar.sh"
       end
+
+      # --------------------------
+      # Kubernetes kubeconfig setup (idempotent)
+      # --------------------------
+      node.vm.provision "shell", inline: <<-SHELL, run: "always"
+        if [ -f /etc/kubernetes/admin.conf ]; then
+          mkdir -p /home/vagrant/.kube
+          cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+          chown vagrant:vagrant /home/vagrant/.kube/config
+        fi
+      SHELL
     end
   end
 end
