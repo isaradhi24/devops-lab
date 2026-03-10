@@ -23,10 +23,15 @@ if [ ! -f /etc/kubernetes/admin.conf ]; then
     --kubernetes-version stable-1.35
 
   # Configure kubeconfig for vagrant user
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
-  chmod 600 $HOME/.kube/config
+  # mkdir -p $HOME/.kube
+  # sudo cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+  # sudo chown $(id -u):$(id -g) $HOME/.kube/config
+  # sudo chmod 600 $HOME/.kube/config
+
+  mkdir -p /home/vagrant/.kube
+  sudo cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+  sudo chown -R vagrant:vagrant /home/vagrant/.kube
+  sudo chmod 600 /home/vagrant/.kube/config
 
   # Deploy Flannel CNI
   kubectl apply -f /vagrant/manifests/kube-flannel.yml
@@ -44,3 +49,9 @@ if [ ! -f /etc/kubernetes/admin.conf ]; then
 else
   echo "Kubernetes master already initialized. Skipping init."
 fi
+
+# ------------------------------
+# Enable and start kubelet containerd jenkins sonarqube services
+# ------------------------------
+sudo systemctl enable kubelet containerd jenkins sonarqube
+sudo systemctl start kubelet containerd jenkins sonarqube

@@ -54,14 +54,14 @@ Vagrant.configure("2") do |config|
         node.vm.provision "shell", path: "scripts/k8s-cni-argocd.sh", run: "always"
 
       when "k8s-worker"
-        node.vm.provision "shell", path: "scripts/k8s-worker.sh"
+        node.vm.provision "shell", path: "scripts/k8s-worker.sh", run: "always"
 
       when "jenkins"
         # Use the fixed script with permanent Jenkins GPG key
-        node.vm.provision "shell", path: "scripts/jenkins.sh"
+        node.vm.provision "shell", path: "scripts/jenkins.sh", run: "always"
 
       when "sonar"
-        node.vm.provision "shell", path: "scripts/sonar.sh"
+        node.vm.provision "shell", path: "scripts/sonar.sh", run: "always"
       end
 
       # --------------------------
@@ -70,8 +70,9 @@ Vagrant.configure("2") do |config|
       node.vm.provision "shell", inline: <<-SHELL, run: "always"
         if [ -f /etc/kubernetes/admin.conf ]; then
           mkdir -p /home/vagrant/.kube
-          cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
-          chown vagrant:vagrant /home/vagrant/.kube/config
+          sudo cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+          sudo chown -R vagrant:vagrant /home/vagrant/.kube
+          sudo chmod 600 /home/vagrant/.kube/config
         fi
       SHELL
     end

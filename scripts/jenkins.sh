@@ -49,5 +49,11 @@ echo "Jenkins installed successfully"
 echo "Jenkins URL: http://192.168.56.20:8080"
 echo "================================="
 
+# ------------------------------
+# Enable and start kubelet containerd jenkins sonarqube services
+# ------------------------------
+sudo systemctl enable kubelet containerd jenkins sonarqube
+sudo systemctl start kubelet containerd jenkins sonarqube
+
 echo "Initial admin password:"
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword || true

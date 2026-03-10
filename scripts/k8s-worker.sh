@@ -90,3 +90,9 @@ echo "Swap configured successfully."
 
 echo "Worker setup completed successfully."
 echo "=========================================="
+
+# ------------------------------
+# Enable and start kubelet containerd jenkins sonarqube services
+# ------------------------------
+sudo systemctl enable kubelet containerd jenkins sonarqube
+sudo systemctl start kubelet containerd jenkins sonarqube
